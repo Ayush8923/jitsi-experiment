@@ -1,65 +1,79 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   useColorScheme,
+  Button,
   View,
+  ActivityIndicator,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
+import { JitsiMeeting } from '@jitsi/react-native-sdk';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+const meetConfig = {
+  subject: 'Meeting Room',
+};
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+const meetFeatureFlags = {
+  'add-people.enabled': false,
+  'calendar.enabled': false,
+  'call-integration.enabled': false,
+  'chat.enabled': false,
+  'close-captions.enabled': false,
+  'invite.enabled': false,
+  'android.screensharing.enabled': false,
+  'live-streaming.enabled': false,
+  'meeting-name.enabled': false,
+  'meeting-password.enabled': true,
+  'pip.enabled': true,
+  'kick-out.enabled': false,
+  'conference-timer.enabled': true,
+  'video-share.enabled': false,
+  'recording.enabled': true,
+  'reactions.enabled': false,
+  'raise-hand.enabled': true,
+  'tile-view.enabled': true,
+  'toolbox.alwaysVisible': true,
+  'toolbox.enabled': true,
+  'welcomepage.enabled': false,
+};
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [meetingStarted, setMeetingStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+    flex: 1, // Added flex to take full screen space
+  };
+
+  const onConferenceLeft = useCallback(() => {
+    console.log('Conference Terminated');
+    setMeetingStarted(false);
+  }, []);
+
+  const onConferenceWillJoin = useCallback(() => {
+    console.log('Conference Will Join');
+    setLoading(true); // Start showing the loader
+  }, []);
+
+  const onConferenceJoined = useCallback(() => {
+    console.log('Conference Joined');
+    setLoading(false); // Hide the loader when the meeting is successfully joined
+  }, []);
+
+  const eventListeners = {
+    onConferenceWillJoin,
+    onConferenceLeft,
+    onConferenceJoined,
+  };
+
+  const startMeeting = () => {
+    setMeetingStarted(true);
   };
 
   return (
@@ -68,50 +82,43 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+      {!meetingStarted ? (
+        <View style={styles.buttonContainer}>
+          <Button title="Start Jitsi Meeting" onPress={startMeeting} />
         </View>
-      </ScrollView>
+      ) : (
+        <View style={{ flex: 1 }}>
+          {loading && (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+          )}
+          <JitsiMeeting
+            config={meetConfig}
+            eventListeners={eventListeners}
+            flags={meetFeatureFlags}
+            style={{ flex: 1, backgroundColor: 'black' }}
+            room={'ThisIsNotATestRoomName'}
+            serverURL={'https://test.video.mentortogether.org'}
+            token={'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb250ZXh0Ijp7InVzZXIiOnsiYXZhdGFyIjoiIiwibmFtZSI6Ikx1a2UgU2t5IiwiZW1haWwiOiJ0ZXN0bWVudGVlMjIzQG1haWxpbmF0b3IuY29tIn19LCJhdWQiOiJqaXRzaSIsImlzcyI6InRlc3QuYXBwLm1lbnRvcnRvZ2V0aGVyLm9yZyIsInN1YiI6IioiLCJyb29tIjoiZDE2ZGRhYzYtMDhhMC00YTBlLWJhMGQtMmFlMDkzNmRiNDA0IiwiZXhwIjoxNzI2Nzc4MzIyfQ.W_qL1x_M8qNxiQdJo6f3kGBFinJrDbnrvs5Gb6QPjCA'}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
+  buttonContainer: {
     marginTop: 32,
     paddingHorizontal: 24,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  loaderContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -25 }, { translateY: -25 }],
+    zIndex: 10,
   },
 });
 
